@@ -150,6 +150,30 @@ async def add_admin(msg: Message):
     save_admins(ADMIN_IDS)
     await msg.answer(f"✅ Admin qo‘shildi: {new_id}")
 
+
+@router.message(F.text == "/removechannel")
+async def remove_channel(msg: Message):
+    if msg.from_user.id not in ADMIN_IDS:
+        return await msg.answer("❌ Siz admin emassiz.")
+
+    try:
+        # Fayldan mavjud kanal nomini o‘qib olamiz (agar bo‘lsa)
+        with open(CHANNEL_FILE, "r") as f:
+            data = json.load(f)
+            old_channel = data.get("channel")
+    except:
+        old_channel = None
+
+    # Faylni bo‘sh holatda yozib chiqamiz
+    with open(CHANNEL_FILE, "w") as f:
+        json.dump({}, f)
+
+    if old_channel:
+        await msg.answer(f"🗑 Kanal o‘chirildi: {old_channel}")
+    else:
+        await msg.answer("ℹ️ Hech qanday kanal o‘rnatilmagan edi.")
+
+
 @router.message(F.text == "/adminlist")
 async def admin_list(msg: Message):
     if msg.from_user.id not in ADMIN_IDS:
