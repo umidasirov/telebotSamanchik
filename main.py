@@ -156,7 +156,7 @@ async def set_description(msg: Message):
     await msg.answer(f"📝 Tavsif yangilandi: {code} → {desk}")
 
 
-@router.message()
+@router.message(lambda m: not m.text.startswith("/"))
 async def search_video(msg: Message):
     code = msg.text.strip().lower()
     async with aiosqlite.connect(DB_PATH) as db:
@@ -194,7 +194,7 @@ async def admin_list(msg: Message):
         return await msg.answer("❌ Ruxsat yo‘q.")
     admins = "\n".join([f"<a href='tg://user?id={i}'>{i}</a>" for i in ADMIN_IDS])
     await msg.answer(f"👤 Adminlar:\n{admins}")
-    
+
 
 @router.message(F.text == "/channellist")
 async def channel_list(msg: Message):
