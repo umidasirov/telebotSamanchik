@@ -89,7 +89,7 @@ async def start_cmd(msg: Message):
     await msg.answer("👋 Salom! Kod yuboring yoki /add orqali video qo‘shing (faqat admin).")
 
 
-@router.message(F.text.startswith("/addchannel"))
+@router.message(F.text.startswith("/channeladd"))
 async def add_channel(msg: Message):
     if msg.from_user.id not in ADMIN_IDS:
         return await msg.answer("❌ Siz admin emassiz.")
@@ -173,13 +173,13 @@ async def search_video(msg: Message):
 
 
 # -------------- ADMIN ----------------
-@router.message(F.text.startswith("/addadmin"))
+@router.message(F.text.startswith("/adminadd"))
 async def add_admin(msg: Message):
     if msg.from_user.id not in ADMIN_IDS:
         return await msg.answer("❌ Sizda ruxsat yo‘q.")
     parts = msg.text.split()
     if len(parts) != 2 or not parts[1].isdigit():
-        return await msg.answer("❗ Format: /addadmin <user_id>")
+        return await msg.answer("❗ Format: /adminadd <user_id>")
     new_id = int(parts[1])
     if new_id in ADMIN_IDS:
         return await msg.answer("✅ Allaqachon admin.")
