@@ -16,6 +16,7 @@ ADMIN_FILE = "data/admin_ids.json"
 CHANNEL_FILE = "data/channel.json"
 pending_add = {}
 
+
 # ----------- SQLITE INIT -----------
 async def init_db():
     async with aiosqlite.connect(DB_PATH) as db:
@@ -28,6 +29,7 @@ async def init_db():
         """)
         await db.commit()
 
+
 # ----------- JSON LOAD/SAVE ----------
 def load_admins():
     try:
@@ -36,55 +38,86 @@ def load_admins():
     except:
         return []
 
+
 def save_admins(admins):
     with open(ADMIN_FILE, "w") as f:
         json.dump(admins, f)
 
-def load_channel():
+
+def load_channels():
     try:
         with open(CHANNEL_FILE, "r") as f:
-            return json.load(f).get("channel")
+            return json.load(f).get("channels", [])
     except:
-        return None
+        return []
 
-def save_channel(username):
+
+def save_channels(channels):
     with open(CHANNEL_FILE, "w") as f:
-        json.dump({"channel": username}, f)
+        json.dump({"channels": channels}, f, indent=2)
+
 
 ADMIN_IDS = load_admins()
+
 
 # --------- SUBSCRIPTION CHECK --------
 async def is_user_subscribed(user_id: int, channel: str) -> bool:
     try:
         member = await bot.get_chat_member(channel, user_id)
-        return member.status in ("member", "administrator", "creator")
+        return member.status not in ("left", "kicked")
     except TelegramBadRequest:
         return False
+
 
 # --------- BOT HANDLERS --------------
 @router.message(F.text == "/start")
 async def start_cmd(msg: Message):
-    channel = load_channel()
-    if channel:
-        subscribed = await is_user_subscribed(msg.from_user.id, channel)
-        if not subscribed:
-            return await msg.answer(
-                f"📛 Botdan foydalanish uchun {channel} kanaliga obuna bo‘ling!\n\n"
-                f"➡️ <a href='https://t.me/{channel[1:]}'>Kanalga o‘tish</a>\n"
-                f"✅ Obuna bo‘lgach, /start ni qayta yuboring.",
-                disable_web_page_preview=True
-            )
+    channels = load_channels()
+    unsubscribed = []
+
+    for channel in channels:
+        if not await is_user_subscribed(msg.from_user.id, channel):
+            unsubscribed.append(channel)
+
+    if unsubscribed:
+        text = "📛 Botdan foydalanish uchun quyidagi kanallarga obuna bo‘ling:\n\n"
+        for ch in unsubscribed:
+            text += f"• <a href='https://t.me/{ch[1:]}'>{ch}</a>\n"
+        text += "\n✅ Obuna bo‘lgach, /start ni qayta yuboring."
+        return await msg.answer(text, disable_web_page_preview=True)
+
     await msg.answer("👋 Salom! Kod yuboring yoki /add orqali video qo‘shing (faqat admin).")
 
-@router.message(F.text.startswith("/setchannel"))
-async def set_channel(msg: Message):
+
+@router.message(F.text.startswith("/addchannel"))
+async def add_channel(msg: Message):
     if msg.from_user.id not in ADMIN_IDS:
         return await msg.answer("❌ Siz admin emassiz.")
     parts = msg.text.split()
     if len(parts) != 2 or not parts[1].startswith("@"):
-        return await msg.answer("❗ Format: /setchannel @kanal")
-    save_channel(parts[1])
-    await msg.answer(f"✅ Kanal saqlandi: {parts[1]}")
+        return await msg.answer("❗ Format: /addchannel @kanal")
+    channels = load_channels()
+    if parts[1] in channels:
+        return await msg.answer("ℹ️ Kanal allaqachon mavjud.")
+    channels.append(parts[1])
+    save_channels(channels)
+    await msg.answer(f"✅ Kanal qo‘shildi: {parts[1]}")
+
+
+@router.message(F.text.startswith("/removechannel"))
+async def remove_channel(msg: Message):
+    if msg.from_user.id not in ADMIN_IDS:
+        return await msg.answer("❌ Siz admin emassiz.")
+    parts = msg.text.split()
+    if len(parts) != 2 or not parts[1].startswith("@"):
+        return await msg.answer("❗ Format: /removechannel @kanal")
+    channels = load_channels()
+    if parts[1] not in channels:
+        return await msg.answer("❌ Bunday kanal yo‘q.")
+    channels.remove(parts[1])
+    save_channels(channels)
+    await msg.answer(f"🗑 Kanal o‘chirildi: {parts[1]}")
+
 
 @router.message(F.text.startswith("/add"))
 async def add_video_step1(msg: Message):
@@ -96,6 +129,7 @@ async def add_video_step1(msg: Message):
     pending_add[msg.from_user.id] = parts[1].lower()
     await msg.answer(f"✅ Endi shu kodga video yuboring: {parts[1]}")
 
+
 @router.message(lambda m: m.video and m.from_user.id in pending_add)
 async def add_video_step2(msg: Message):
     code = pending_add.pop(msg.from_user.id)
@@ -104,6 +138,7 @@ async def add_video_step2(msg: Message):
                          (code, msg.video.file_id, ""))
         await db.commit()
     await msg.answer(f"✅ Video saqlandi! Kod: <b>{code}</b>")
+
 
 @router.message(F.text.startswith("/desk"))
 async def set_description(msg: Message):
@@ -120,6 +155,7 @@ async def set_description(msg: Message):
         await db.commit()
     await msg.answer(f"📝 Tavsif yangilandi: {code} → {desk}")
 
+
 @router.message()
 async def search_video(msg: Message):
     code = msg.text.strip().lower()
@@ -134,6 +170,7 @@ async def search_video(msg: Message):
         await msg.answer_video(video=file_id, caption=caption)
     else:
         await msg.answer("❌ Bunday kodga video topilmadi.")
+
 
 # -------------- ADMIN ----------------
 @router.message(F.text.startswith("/addadmin"))
@@ -151,42 +188,33 @@ async def add_admin(msg: Message):
     await msg.answer(f"✅ Admin qo‘shildi: {new_id}")
 
 
-@router.message(F.text == "/removechannel")
-async def remove_channel(msg: Message):
-    if msg.from_user.id not in ADMIN_IDS:
-        return await msg.answer("❌ Siz admin emassiz.")
-
-    try:
-        # Fayldan mavjud kanal nomini o‘qib olamiz (agar bo‘lsa)
-        with open(CHANNEL_FILE, "r") as f:
-            data = json.load(f)
-            old_channel = data.get("channel")
-    except:
-        old_channel = None
-
-    # Faylni bo‘sh holatda yozib chiqamiz
-    with open(CHANNEL_FILE, "w") as f:
-        json.dump({}, f)
-
-    if old_channel:
-        await msg.answer(f"🗑 Kanal o‘chirildi: {old_channel}")
-    else:
-        await msg.answer("ℹ️ Hech qanday kanal o‘rnatilmagan edi.")
-
-
 @router.message(F.text == "/adminlist")
 async def admin_list(msg: Message):
     if msg.from_user.id not in ADMIN_IDS:
         return await msg.answer("❌ Ruxsat yo‘q.")
     admins = "\n".join([f"<a href='tg://user?id={i}'>{i}</a>" for i in ADMIN_IDS])
     await msg.answer(f"👤 Adminlar:\n{admins}")
+    
+
+@router.message(F.text == "/channellist")
+async def channel_list(msg: Message):
+    if msg.from_user.id not in ADMIN_IDS:
+        return await msg.answer("❌ Siz admin emassiz.")
+    channels = load_channels()
+    if not channels:
+        return await msg.answer("ℹ️ Hech qanday kanal yo‘q.")
+    text = "📢 Majburiy kanallar:\n" + "\n".join([f"• {ch}" for ch in channels])
+    await msg.answer(text)
+
 
 # --------- START ---------------------
 dp.include_router(router)
 
+
 async def main():
     await init_db()
     await dp.start_polling(bot)
+
 
 if __name__ == "__main__":
     asyncio.run(main())
