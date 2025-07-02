@@ -50,6 +50,19 @@ def load_channels():
             return json.load(f).get("channels", [])
     except:
         return []
+# Fayl yuqori qismiga yoki `save_channels` ostiga qo‘shing
+ADS_FILE = "data/ads.json"
+
+def load_ads():
+    try:
+        with open(ADS_FILE, "r") as f:
+            return json.load(f).get("ads", [])
+    except:
+        return []
+
+def save_ads(ads):
+    with open(ADS_FILE, "w") as f:
+        json.dump({"ads": ads}, f, indent=2)
 
 
 def save_channels(channels):
