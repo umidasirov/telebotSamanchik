@@ -86,7 +86,7 @@ async def start_cmd(msg: Message):
         text += "\n✅ Obuna bo‘lgach, /start ni qayta yuboring."
         return await msg.answer(text, disable_web_page_preview=True)
 
-    await msg.answer("👋 Salom! Kod yuboring yoki /add orqali video qo‘shing (faqat admin).")
+    await msg.answer("👋 Salom! Kod yuboring 🖊.")
 
 
 @router.message(F.text.startswith("/channeladd"))
