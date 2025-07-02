@@ -95,7 +95,7 @@ async def add_channel(msg: Message):
         return await msg.answer("❌ Siz admin emassiz.")
     parts = msg.text.split()
     if len(parts) != 2 or not parts[1].startswith("@"):
-        return await msg.answer("❗ Format: /addchannel @kanal")
+        return await msg.answer("❗ Format: /channeladd @kanal")
     channels = load_channels()
     if parts[1] in channels:
         return await msg.answer("ℹ️ Kanal allaqachon mavjud.")
