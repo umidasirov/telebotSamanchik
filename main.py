@@ -103,6 +103,18 @@ async def add_channel(msg: Message):
     save_channels(channels)
     await msg.answer(f"✅ Kanal qo‘shildi: {parts[1]}")
 
+@router.message(F.text.startswith("/adadd"))
+async def add_ad(msg: Message):
+    if msg.from_user.id not in ADMIN_IDS:
+        return await msg.answer("❌ Siz admin emassiz.")
+    text = msg.text[7:].strip()
+    if not text:
+        return await msg.answer("❗ Format: /adadd <matn>")
+    ads = load_ads()
+    ads.append(text)
+    save_ads(ads)
+    await msg.answer("✅ Reklama qo‘shildi.")
+
 
 @router.message(F.text.startswith("/removechannel"))
 async def remove_channel(msg: Message):
